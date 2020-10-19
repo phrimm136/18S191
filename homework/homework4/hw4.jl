@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.11.14
+# v0.12.4
 
 using Markdown
 using InteractiveUtils
@@ -27,6 +27,9 @@ begin
 	plotly()
 	using PlutoUI
 end
+
+# ╔═╡ 6f97dd66-0d47-11eb-2682-a714428b592d
+using StatsBase, Statistics
 
 # ╔═╡ 01341648-0403-11eb-2212-db450c299f35
 md"_homework 4, version 1_"
@@ -83,8 +86,7 @@ In this model, an individual who is infected has a constant probability $p$ to r
 
 # ╔═╡ 02b0c2fc-0415-11eb-2b40-7bca8ea4eef9
 function bernoulli(p::Number)
-	
-	return missing
+	return rand() < p
 end
 
 # ╔═╡ 76d117d4-0403-11eb-05d2-c5ea47d06f43
@@ -98,8 +100,13 @@ function recovery_time(p)
 		throw(ArgumentError("p must be positive: p = 0 cannot result in a recovery"))
 	end
 	
-	# Your code here. See the comment below about the p ≤ 0 case.
-	return missing
+	i = 1
+	while true
+		if bernoulli(p)
+			return i
+		end
+		i += 1
+	end
 end
 
 # ╔═╡ 6db6c894-0415-11eb-305a-c75b119d89e9
@@ -121,7 +128,7 @@ md"""
 
 # ╔═╡ 73047bba-0416-11eb-1047-23e9c3dbde05
 interpretation_of_p_equals_one = md"""
-blablabla
+The case always happens; an infected person recovers after the first night.
 """
 
 # ╔═╡ 76f62d64-0403-11eb-27e2-3de58366b619
@@ -133,7 +140,7 @@ md"""
 # ╔═╡ c5c7cb86-041b-11eb-3360-45463105f3c9
 function do_experiment(p, N)
 	
-	return missing
+	return [recovery_time(p) for _ in 1:N]
 end
 
 # ╔═╡ d8abd2f6-0416-11eb-1c2a-f9157d9760a7
@@ -164,8 +171,16 @@ As with any probability distribution, it should be normalised to $1$, in the sen
 
 # ╔═╡ 105d347e-041c-11eb-2fc8-1d9e5eda2be0
 function frequencies(values)
-	
-	return missing
+	freqs = Dict()
+	num = length(values)
+	for value in values
+		if haskey(freqs, value)
+			freqs[value] += 1/num
+		else
+			freqs[value] = 1/num
+		end
+	end
+	return freqs
 end
 
 # ╔═╡ 1ca7a8c2-041a-11eb-146a-15b8cdeaea72
@@ -252,8 +267,9 @@ md"""
 # ╔═╡ f1f89502-0494-11eb-2303-0b79d8bbd13f
 function frequencies_plot_with_mean(data)
 	# start out by copying the frequencies_plot_with_maximum function
-	
-	return missing
+	base = bar(frequencies(data))
+	vline!(base, [sum(data)/length(data)], label="mean")
+	return base
 end
 
 # ╔═╡ 06089d1e-0495-11eb-0ace-a7a7dc60e5b2
@@ -265,7 +281,19 @@ md"""
 """
 
 # ╔═╡ bb63f3cc-042f-11eb-04ff-a128aec3c378
+@bind p_interactive Slider(0.01:0.01:1, show_value=true)
 
+# ╔═╡ f99f2802-0abd-11eb-1e12-f3d9a181ac9b
+@bind N_interactive Slider(1:100_000, show_value=true)
+
+# ╔═╡ 063b124c-0abe-11eb-1f70-298fa6311a70
+begin
+	recovery_time_samples = do_experiment(p_interactive, 100_000)
+	hist = histogram(recovery_time_samples[1:N_interactive], normalize=true, alpha=0.5, leg=false, size=(400,300))
+	vline!(hist,
+		[sum(recovery_time_samples[1:N_interactive]) / length(recovery_time_samples[1:N_interactive])], 
+		label="mean")
+end
 
 # ╔═╡ bb8aeb58-042f-11eb-18b8-f995631df619
 md"""
@@ -278,8 +306,8 @@ md"""
 👉 What shape does the distribution seem to have? Can you verify that by adding a second plot with the expected shape?
 """
 
-# ╔═╡ 7bb8e426-0495-11eb-3a8b-cbbab61a1631
-
+# ╔═╡ 838e3d98-0adf-11eb-0665-c1c47d946bad
+md"It seems like exponential distribution. Actually the distribution is some of $(1-p)^{(n-1)}p$, but I can't find its coefficient.."
 
 # ╔═╡ 77db111e-0403-11eb-2dea-4b42ceed65d6
 md"""
@@ -288,8 +316,12 @@ md"""
 
 """
 
-# ╔═╡ 7335de44-042f-11eb-2873-8bceef722432
-
+# ╔═╡ e36165c2-0aeb-11eb-2d2d-33be3df5f111
+let N = 10_000
+	experiments = [(do_experiment(p, N)) for p in 0.001:0.001:1]
+	τ = sum.(experiments) ./ length.(experiments)
+	plot(τ)
+end
 
 # ╔═╡ 61789646-0403-11eb-0042-f3b8308f11ba
 md"""
@@ -321,7 +353,7 @@ We have just defined a new type `InfectionStatus`, as well as names `S`, `I` and
 """
 
 # ╔═╡ 7f4e121c-041d-11eb-0dff-cd0cbfdfd606
-test_status = missing
+test_status = S::InfectionStatus
 
 # ╔═╡ 7f744644-041d-11eb-08a0-3719cc0adeb7
 md"""
@@ -329,12 +361,15 @@ md"""
 """
 
 # ╔═╡ 88c53208-041d-11eb-3b1e-31b57ba99f05
-
+typeof(test_status)
 
 # ╔═╡ 847d0fc2-041d-11eb-2864-79066e223b45
 md"""
 👉 Convert `x` to an integer using the `Integer` function. What value does it have? What values do `I` and `R` have?
 """
+
+# ╔═╡ bfa3d4d4-0c6d-11eb-0690-3f190482f073
+[Integer(S), Integer(I), Integer(R)]
 
 # ╔═╡ 860790fc-0403-11eb-2f2e-355f77dcc7af
 md"""
@@ -344,10 +379,10 @@ For each agent we want to keep track of its infection status and the number of *
 """
 
 # ╔═╡ ae4ac4b4-041f-11eb-14f5-1bcde35d18f2
-mutable struct Agent
-	status::InfectionStatus
-	num_infected::Int64
-end
+#mutable struct Agent
+#	status::InfectionStatus
+#	num_infected::Int64
+#end
 
 # ╔═╡ ae70625a-041f-11eb-3082-0753419d6d57
 md"""
@@ -356,16 +391,10 @@ When you define a new type like this, Julia automatically defines one or more **
 👉 Use the `methods` function to check how many constructors are pre-defined for the `Agent` type.
 """
 
-# ╔═╡ 60a8b708-04c8-11eb-37b1-3daec644ac90
-
-
 # ╔═╡ 189cae1e-0424-11eb-2666-65bf297d8bdd
 md"""
 👉 Create an agent `test_agent` with status `S` and `num_infected` equal to 0.
 """
-
-# ╔═╡ 18d308c4-0424-11eb-176d-49feec6889cf
-test_agent = missing
 
 # ╔═╡ 190deebc-0424-11eb-19fe-615997093e14
 md"""
@@ -378,7 +407,19 @@ Let's check that the new method works correctly. How many methods does the const
 """
 
 # ╔═╡ 82f2580a-04c8-11eb-1eea-bdb4e50eee3b
-Agent()
+begin
+	mutable struct Agent
+		status::InfectionStatus
+		num_infected::Int64
+		end
+	Agent() = Agent(S, 0)
+end
+
+# ╔═╡ 60a8b708-04c8-11eb-37b1-3daec644ac90
+methods(Agent)
+
+# ╔═╡ 18d308c4-0424-11eb-176d-49feec6889cf
+test_agent = Agent(S, 0)
 
 # ╔═╡ 8631a536-0403-11eb-0379-bb2e56927727
 md"""
@@ -389,8 +430,7 @@ md"""
 
 # ╔═╡ 98beb336-0425-11eb-3886-4f8cfd210288
 function set_status!(agent::Agent, new_status::InfectionStatus)
-	
-	# your code here
+	agent.status = new_status
 end
 
 # ╔═╡ 866299e8-0403-11eb-085d-2b93459cc141
@@ -401,14 +441,12 @@ md"""
 
 # ╔═╡ 9a837b52-0425-11eb-231f-a74405ff6e23
 function is_susceptible(agent::Agent)
-	
-	return missing
+	return agent.status == S::InfectionStatus
 end
 
 # ╔═╡ a8dd5cae-0425-11eb-119c-bfcbf832d695
 function is_infected(agent::Agent)
-	
-	return missing
+	return agent.status == I::InfectionStatus
 end
 
 # ╔═╡ 8692bf42-0403-11eb-191f-b7d08895274f
@@ -420,8 +458,8 @@ md"""
 
 # ╔═╡ 7946d83a-04a0-11eb-224b-2b315e87bc84
 function generate_agents(N::Integer)
-	
-	return missing
+	infected_num = rand(1:N)
+	return [i == infected_num ? Agent(I, 0) : Agent() for i in 1:N]
 end
 
 # ╔═╡ 488771e2-049f-11eb-3b0a-0de260457731
@@ -455,26 +493,10 @@ md"""
 $(html"<span id=interactfunction></span>")
 """
 
-# ╔═╡ 406aabea-04a5-11eb-06b8-312879457c42
-function interact!(agent::Agent, source::Agent, infection::InfectionRecovery)
-	# your code here
-end
-
 # ╔═╡ b21475c6-04ac-11eb-1366-f3b5e967402d
 md"""
 Play around with the test case below to test your function! Try changing the definitions of `agent`, `source` and `infection`. Since we are working with randomness, you might want to run the cell multiple times.
 """
-
-# ╔═╡ 9c39974c-04a5-11eb-184d-317eb542452c
-let
-	agent = Agent(S, 0)
-	source = Agent(I, 0)
-	infection = InfectionRecovery(0.9, 0.5)
-	
-	interact!(agent, source, infection)
-	
-	(agent=agent, source=source)
-end
 
 # ╔═╡ 619c8a10-0403-11eb-2e89-8b0974fb01d0
 md"""
@@ -496,20 +518,10 @@ You should not use any global variables inside the functions: Each function must
 
 """
 
-# ╔═╡ 2ade2694-0425-11eb-2fb2-390da43d9695
-function step!(agents::Vector{Agent}, infection::AbstractInfection)
-	# your code here
-end
-
 # ╔═╡ 955321de-0403-11eb-04ce-fb1670dfbb9e
 md"""
 👉 Write a function `sweep!`. It runs `step!` $N$ times, where $N$ is the number of agents. Thus each agent acts, on average, once per sweep; a sweep is thus the unit of time in our Monte Carlo simulation.
 """
-
-# ╔═╡ 46133a74-04b1-11eb-0b46-0bc74e564680
-function sweep!(agents::Vector{Agent}, infection::AbstractInfection)
-	# your code here
-end
 
 # ╔═╡ 95771ce2-0403-11eb-3056-f1dc3a8b7ec3
 md"""
@@ -526,35 +538,8 @@ You've seen an example of named tuples before: the `student` variable at the top
 _Feel free to store the counts in a different way, as long as the return type is the same._
 """
 
-# ╔═╡ 887d27fc-04bc-11eb-0ab9-eb95ef9607f8
-function simulation(N::Integer, T::Integer, infection::AbstractInfection)
-
-	# your code here
-	
-	return (S=missing, I=missing, R=missing)
-end
-
-# ╔═╡ b92f1cec-04ae-11eb-0072-3535d1118494
-simulation(3, 20, InfectionRecovery(0.9, 0.2))
-
-# ╔═╡ 2c62b4ae-04b3-11eb-0080-a1035a7e31a2
-simulation(100, 1000, InfectionRecovery(0.005, 0.2))
-
 # ╔═╡ 28db9d98-04ca-11eb-3606-9fb89fa62f36
 @bind run_basic_sir Button("Run simulation again!")
-
-# ╔═╡ c5156c72-04af-11eb-1106-b13969b036ca
-let
-	run_basic_sir
-	
-	N = 100
-	T = 1000
-	sim = simulation(N, T, InfectionRecovery(0.02, 0.002))
-	
-	result = plot(1:T, sim.S, ylim=(0, N), label="Susceptible")
-	plot!(result, 1:T, sim.I, ylim=(0, N), label="Infectious")
-	plot!(result, 1:T, sim.R, ylim=(0, N), label="Recovered")
-end
 
 # ╔═╡ 0a967f38-0493-11eb-0624-77e40b24d757
 md"""
@@ -595,34 +580,10 @@ Instead of pressing the button many times, let's have the computer repeat the si
 Every single simulation returns a named tuple with the status counts, so the result of multiple simulations will be an array of those. Have a look inside the result, `simulations`, and make sure that its structure is clear.
 """
 
-# ╔═╡ 38b1aa5a-04cf-11eb-11a2-930741fc9076
-function repeat_simulations(N, T, infection, num_simulations)
-	N = 100
-	T = 1000
-	
-	map(1:num_simulations) do _
-		simulation(N, T, infection)
-	end
-end
-
-# ╔═╡ 80c2cd88-04b1-11eb-326e-0120a39405ea
-simulations = repeat_simulations(100, 1000, InfectionRecovery(0.02, 0.002), 20)
-
 # ╔═╡ 80e6f1e0-04b1-11eb-0d4e-475f1d80c2bb
 md"""
 In the cell below, we plot the evolution of the number of $I$ individuals as a function of time for each of the simulations on the same plot using transparency (`alpha=0.5` inside the plot command).
 """
-
-# ╔═╡ 9cd2bb00-04b1-11eb-1d83-a703907141a7
-let
-	p = plot()
-	
-	for sim in simulations
-		plot!(p, 1:1000, sim.I, alpha=.5, label=nothing)
-	end
-	
-	p
-end
 
 # ╔═╡ 95c598d4-0403-11eb-2328-0175ed564915
 md"""
@@ -633,12 +594,23 @@ md"""
 function sir_mean_plot(simulations::Vector{<:NamedTuple})
 	# you might need T for this function, here's a trick to get it:
 	T = length(first(simulations).S)
+	μ_S = zeros(T)
+	μ_I = zeros(T)
+	μ_R = zeros(T)
 	
-	return missing
+	for i in 1:T
+		μ_S[i] = mean(map(x -> x.S[i], simulations))
+		μ_I[i] = mean(map(x -> x.I[i], simulations))
+		μ_R[i] = mean(map(x -> x.R[i], simulations))
+	end
+	
+	p = plot()
+	for μ in (μ_S,μ_I,μ_R)
+		plot!(p, 1:T, μ, alpha=.5, label=nothing, lw=3)
+	end
+	
+	return p
 end
-
-# ╔═╡ 7f635722-04d0-11eb-3209-4b603c9e843c
-sir_mean_plot(simulations)
 
 # ╔═╡ dfb99ace-04cf-11eb-0739-7d694c837d59
 md"""
@@ -646,7 +618,10 @@ md"""
 """
 
 # ╔═╡ 1c6aa208-04d1-11eb-0b87-cf429e6ff6d0
+@bind p_infection Slider(0.01:0.01:1, show_value=true)
 
+# ╔═╡ 386dc410-0e03-11eb-0513-a98a2356c5d3
+@bind p_recovery Slider(0.01:0.01:1, show_value=true)
 
 # ╔═╡ 95eb9f88-0403-11eb-155b-7b2d3a07cff0
 md"""
@@ -659,8 +634,23 @@ This should confirm that the distribution of $I$ at each step is pretty wide!
 function sir_mean_error_plot(simulations::Vector{<:NamedTuple})
 	# you might need T for this function, here's a trick to get it:
 	T = length(first(simulations).S)
+	μ_S, μ_I, μ_R, σ_S, σ_I, σ_R = [zeros(T) for _ in 1:6]
 	
-	return missing
+	for i in 1:T
+		μ_S[i] = mean(map(x -> x.S[i], simulations))
+		μ_I[i] = mean(map(x -> x.I[i], simulations))
+		μ_R[i] = mean(map(x -> x.R[i], simulations))
+		σ_S[i] = std(map(x -> x.S[i], simulations))
+		σ_I[i] = std(map(x -> x.I[i], simulations))
+		σ_R[i] = std(map(x -> x.R[i], simulations))
+	end
+	
+	p = plot()
+	for (μ, σ) in [(μ_S,σ_S),(μ_I,σ_I),(μ_R,σ_R)]
+		plot!(p, 1:T, μ, alpha=.5, label=nothing, lw=3, ribbon=σ)
+	end
+	
+	return p
 end
 
 # ╔═╡ 9611ca24-0403-11eb-3582-b7e3bb243e62
@@ -671,9 +661,6 @@ md"""
 
 """
 
-# ╔═╡ 26e2978e-0435-11eb-0d61-25f552d2771e
-
-
 # ╔═╡ 9635c944-0403-11eb-3982-4df509f6a556
 md"""
 #### Exercse 3.4
@@ -682,7 +669,11 @@ md"""
 """
 
 # ╔═╡ 4ad11052-042c-11eb-3643-8b2b3e1269bc
-
+md"
+* time when the infectious people peaks
+* number of people who infect other many times
+* rate of recovery
+"
 
 # ╔═╡ 61c00724-0403-11eb-228d-17c11670e5d1
 md"""
@@ -697,7 +688,140 @@ This new type `Reinfection` should also be a **subtype** of `AbstractInfection`.
 """
 
 # ╔═╡ 8dd97820-04a5-11eb-36c0-8f92d4b859a8
+struct Reinfection <: AbstractInfection
+	p_infection
+	p_recovery
+end
 
+# ╔═╡ 406aabea-04a5-11eb-06b8-312879457c42
+begin
+	function interact!(agent::Agent, source::Agent, infection::InfectionRecovery)
+		if agent.status == I
+			if bernoulli(infection.p_recovery)
+				agent.status = R
+			end
+		elseif agent.status == S && source.status == I
+			if bernoulli(infection.p_infection)
+				agent.status = I
+				source.num_infected += 1
+			end
+		end
+	end
+	function interact!(agent::Agent, source::Agent, infection::Reinfection)
+		if agent.status == I
+			if bernoulli(infection.p_recovery)
+				agent..status = S
+			end
+		elseif agent.status == S && source.status == I
+			if bernoulli(infection.p_infection)
+				agent.status = I
+				source.num_infected += 1
+			end
+		end
+	end
+end
+
+# ╔═╡ 9c39974c-04a5-11eb-184d-317eb542452c
+let
+	agent = Agent(S, 0)
+	source = Agent(I, 0)
+	infection = InfectionRecovery(0.9, 0.5)
+	
+	interact!(agent, source, infection)
+	
+	(agent=agent, source=source)
+end
+
+# ╔═╡ 2ade2694-0425-11eb-2fb2-390da43d9695
+function step!(agents::Vector{Agent}, infection::AbstractInfection)
+	agent, source = agents[sample(1:length(agents), 2, replace=false)]
+	interact!(agent, source, infection)
+	return agents
+end
+
+# ╔═╡ 46133a74-04b1-11eb-0b46-0bc74e564680
+function sweep!(agents::Vector{Agent}, infection::AbstractInfection)
+	for i in 1:length(agents)
+		agents = step!(agents, infection)
+	end
+	return agents
+end
+
+# ╔═╡ 2e1033d2-0c81-11eb-37f3-07a7a923301a
+sweep!(generate_agents(3), InfectionRecovery(0.9,0.2))
+
+# ╔═╡ 887d27fc-04bc-11eb-0ab9-eb95ef9607f8
+function simulation(N::Integer, T::Integer, infection::AbstractInfection)
+	agents = generate_agents(N)
+	counts = zeros(T, 3)
+	for i in 1:T
+		sweep!(agents, infection)
+		for j in 1:N
+			counts[i, Int(agents[j].status)+1] += 1
+		end
+	end
+	return (S=counts[:,1], I=counts[:,2], R=counts[:,3])
+end
+
+# ╔═╡ b92f1cec-04ae-11eb-0072-3535d1118494
+simulation(3, 20, InfectionRecovery(0.9, 0.2))
+
+# ╔═╡ 2c62b4ae-04b3-11eb-0080-a1035a7e31a2
+simulation(100, 1000, InfectionRecovery(0.005, 0.2))
+
+# ╔═╡ c5156c72-04af-11eb-1106-b13969b036ca
+let
+	run_basic_sir
+	
+	N = 100
+	T = 1000
+	sim = simulation(N, T, InfectionRecovery(0.02, 0.002))
+	
+	result = plot(1:T, sim.S, ylim=(0, N), label="Susceptible")
+	plot!(result, 1:T, sim.I, ylim=(0, N), label="Infectious")
+	plot!(result, 1:T, sim.R, ylim=(0, N), label="Recovered")
+end
+
+# ╔═╡ 38b1aa5a-04cf-11eb-11a2-930741fc9076
+function repeat_simulations(N, T, infection, num_simulations)	
+	map(1:num_simulations) do _
+		simulation(N, T, infection)
+	end
+end
+
+# ╔═╡ 80c2cd88-04b1-11eb-326e-0120a39405ea
+simulations = repeat_simulations(100, 1000, InfectionRecovery(0.02, 0.002), 20)
+
+# ╔═╡ 9cd2bb00-04b1-11eb-1d83-a703907141a7
+let
+	p = plot()
+	
+	for sim in simulations
+		plot!(p, 1:1000, sim.I, alpha=.5, label=nothing)
+	end
+	plot!(p, 1:1000, mean(map(x -> x.I, simulations)), label=nothing, lw=3)
+	
+	p
+end
+
+# ╔═╡ 7f635722-04d0-11eb-3209-4b603c9e843c
+sir_mean_plot(simulations)
+
+# ╔═╡ b2a6edf0-0e09-11eb-09d1-af9407f0c432
+sir_mean_error_plot(simulations)
+
+# ╔═╡ 26e2978e-0435-11eb-0d61-25f552d2771e
+let
+	N = 100
+	T = 1000
+	agents = generate_agents(N)
+	
+	for _ in 1:T
+		sweep!(agents, InfectionRecovery(0.02, 0.002))
+	end
+	
+	bar(frequencies(map(x -> x.num_infected, agents)))
+end
 
 # ╔═╡ 99ef7b2a-0403-11eb-08ef-e1023cd151ae
 md"""
@@ -717,7 +841,19 @@ Note that you should be able to re-use the `sweep!` and `simulation` functions ,
 """
 
 # ╔═╡ 1ac4b33a-0435-11eb-36f8-8f3f81ae7844
-
+let
+	N = 100
+	T = 1000
+	simulations = repeat_simulations(N, T, Reinfection(0.02, 0.002), 20)
+	p = plot()
+	
+	for sim in simulations
+		plot!(p, 1:T, sim.I, alpha=.5, label=nothing)
+	end
+	plot!(p, 1:T, mean(map(x -> x.I, simulations)), label=nothing, lw=3)
+	
+	p
+end
 
 # ╔═╡ 9a377b32-0403-11eb-2799-e7e59caa6a45
 md"""
@@ -727,7 +863,21 @@ md"""
 """
 
 # ╔═╡ 21c50840-0435-11eb-1307-7138ecde0691
+@bind T_interactive Slider(1:1000, show_value=true)
 
+# ╔═╡ bf626098-110a-11eb-1843-d9215b369bcc
+let
+	N = 100
+	simulations = repeat_simulations(N, T_interactive, Reinfection(0.02, 0.002), 20)
+	p = plot()
+	
+	for sim in simulations
+		plot!(p, 1:T_interactive, sim.I, alpha=.5, label=nothing)
+	end
+	plot!(p, 1:T_interactive, mean(map(x -> x.I, simulations)), label=nothing, lw=3)
+	
+	p
+end
 
 # ╔═╡ da49710e-0420-11eb-092e-4f1173868738
 md"""
@@ -1058,11 +1208,13 @@ bigbreak
 # ╠═06089d1e-0495-11eb-0ace-a7a7dc60e5b2
 # ╟─77b54c10-0403-11eb-16ad-65374d29a817
 # ╠═bb63f3cc-042f-11eb-04ff-a128aec3c378
+# ╠═f99f2802-0abd-11eb-1e12-f3d9a181ac9b
+# ╠═063b124c-0abe-11eb-1f70-298fa6311a70
 # ╟─bb8aeb58-042f-11eb-18b8-f995631df619
 # ╟─778ec25c-0403-11eb-3146-1d11c294bb1f
-# ╠═7bb8e426-0495-11eb-3a8b-cbbab61a1631
+# ╠═838e3d98-0adf-11eb-0665-c1c47d946bad
 # ╟─77db111e-0403-11eb-2dea-4b42ceed65d6
-# ╠═7335de44-042f-11eb-2873-8bceef722432
+# ╠═e36165c2-0aeb-11eb-2d2d-33be3df5f111
 # ╟─61789646-0403-11eb-0042-f3b8308f11ba
 # ╠═26f84600-041d-11eb-1856-b12a3e5c1dc7
 # ╟─271ec5f0-041d-11eb-041b-db46ec1465e0
@@ -1070,6 +1222,7 @@ bigbreak
 # ╟─7f744644-041d-11eb-08a0-3719cc0adeb7
 # ╠═88c53208-041d-11eb-3b1e-31b57ba99f05
 # ╟─847d0fc2-041d-11eb-2864-79066e223b45
+# ╠═bfa3d4d4-0c6d-11eb-0690-3f190482f073
 # ╟─860790fc-0403-11eb-2f2e-355f77dcc7af
 # ╠═ae4ac4b4-041f-11eb-14f5-1bcde35d18f2
 # ╟─ae70625a-041f-11eb-3082-0753419d6d57
@@ -1100,10 +1253,12 @@ bigbreak
 # ╟─1491a078-04aa-11eb-0106-19a3cf1e94b0
 # ╟─f8e05d94-04ac-11eb-26d4-6f1d2c5ed272
 # ╟─619c8a10-0403-11eb-2e89-8b0974fb01d0
+# ╠═6f97dd66-0d47-11eb-2682-a714428b592d
 # ╠═2ade2694-0425-11eb-2fb2-390da43d9695
 # ╟─955321de-0403-11eb-04ce-fb1670dfbb9e
 # ╠═46133a74-04b1-11eb-0b46-0bc74e564680
 # ╟─95771ce2-0403-11eb-3056-f1dc3a8b7ec3
+# ╠═2e1033d2-0c81-11eb-37f3-07a7a923301a
 # ╠═887d27fc-04bc-11eb-0ab9-eb95ef9607f8
 # ╠═b92f1cec-04ae-11eb-0072-3535d1118494
 # ╠═2c62b4ae-04b3-11eb-0080-a1035a7e31a2
@@ -1121,8 +1276,10 @@ bigbreak
 # ╠═7f635722-04d0-11eb-3209-4b603c9e843c
 # ╟─dfb99ace-04cf-11eb-0739-7d694c837d59
 # ╠═1c6aa208-04d1-11eb-0b87-cf429e6ff6d0
+# ╠═386dc410-0e03-11eb-0513-a98a2356c5d3
 # ╟─95eb9f88-0403-11eb-155b-7b2d3a07cff0
 # ╠═287ee7aa-0435-11eb-0ca3-951dbbe69404
+# ╠═b2a6edf0-0e09-11eb-09d1-af9407f0c432
 # ╟─9611ca24-0403-11eb-3582-b7e3bb243e62
 # ╠═26e2978e-0435-11eb-0d61-25f552d2771e
 # ╟─9635c944-0403-11eb-3982-4df509f6a556
@@ -1134,6 +1291,7 @@ bigbreak
 # ╠═1ac4b33a-0435-11eb-36f8-8f3f81ae7844
 # ╟─9a377b32-0403-11eb-2799-e7e59caa6a45
 # ╠═21c50840-0435-11eb-1307-7138ecde0691
+# ╠═bf626098-110a-11eb-1843-d9215b369bcc
 # ╟─da49710e-0420-11eb-092e-4f1173868738
 # ╠═e6219c7c-0420-11eb-3faa-13126f7c8007
 # ╟─5689841e-0414-11eb-0492-63c77ddbd136
