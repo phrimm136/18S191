@@ -141,8 +141,7 @@ md"""
 
 # ╔═╡ d217a4b6-12e8-11eb-29ce-53ae143a39cd
 function finite_difference_slope(f::Function, a, h=1e-3)
-	
-	return missing
+	return (f(a+h) - f(a)) / h
 end
 
 # ╔═╡ f0576e48-1261-11eb-0579-0b1372565ca7
@@ -155,8 +154,7 @@ md"""
 
 # ╔═╡ cbf0a27a-12e8-11eb-379d-85550b942ceb
 function tangent_line(f, a, h)
-	
-	return missing
+	return x -> finite_difference_slope(f, a, h)*(x-a) + f(a)
 end
 
 # ╔═╡ 2b79b698-10b9-11eb-3bde-53fc1c48d5f7
@@ -219,8 +217,7 @@ Using this formula, we only need to know the _value_ ``f(a)`` and the _slope_ ``
 # ╔═╡ fa320028-12c4-11eb-0156-773e2aba8e58
 function euler_integrate_step(fprime::Function, fa::Number, 
 		a::Number, h::Number)
-	
-	return missing
+	return h*fprime(a+h) + fa
 end
 
 # ╔═╡ 2335cae6-112f-11eb-3c2c-254e82014567
@@ -234,8 +231,14 @@ function euler_integrate(fprime::Function, fa::Number,
 	
 	a0 = T[1]
 	h = step(T)
+	e = []
 	
-	return missing
+	for x in T
+		fa = euler_integrate_step(fprime, fa, a0+x, h)
+		push!(e, fa)
+	end
+	
+	return e
 end
 
 # ╔═╡ 4d0efa66-12c6-11eb-2027-53d34c68d5b0
@@ -300,9 +303,9 @@ function euler_SIR_step(β, γ, sir_0::Vector, h::Number)
 	s, i, r = sir_0
 	
 	return [
-		missing,
-		missing,
-		missing,
+		s - h*β*s*i,
+		i + h*(β*s*i - γ*i),
+		r + h*γ*i,
 	]
 end
 
@@ -325,7 +328,15 @@ function euler_SIR(β, γ, sir_0::Vector, T::AbstractRange)
 	
 	num_steps = length(T)
 	
-	return missing
+	e = []
+	sir = sir_0
+	
+	for i in 1:num_steps
+		sir = euler_SIR_step(β, γ, sir, h)
+		push!(e, sir)
+	end
+	
+	return e
 end
 
 # ╔═╡ 4b791b76-12cd-11eb-1260-039c938f5443
@@ -364,7 +375,7 @@ md"""
 
 # ╔═╡ 589b2b4c-1245-11eb-1ec7-693c6bda97c4
 default_SIR_parameters_observation = md"""
-blabla
+It seems that there is no epidemic outbreak. After a long time, the infected declines to zero, which makes some people not be infected.
 """
 
 # ╔═╡ 58b45a0e-1245-11eb-04d1-23a1f3a0f242
@@ -373,7 +384,16 @@ md"""
 """
 
 # ╔═╡ 68274534-1103-11eb-0d62-f1acb57721bc
+@bind β_inter Slider(0:0.01:1, show_value=true, default = 0.3)
 
+# ╔═╡ e8e24486-1b39-11eb-1cc8-7977cf58aa07
+@bind γ_inter Slider(0:0.01:1, show_value=true, default = 0.15)
+
+# ╔═╡ 0bfad866-1b3a-11eb-25cf-cdfa0e72e702
+plot_sir!(plot(), sir_T, euler_SIR(β_inter, γ_inter, [0.99,0.01,0], sir_T))
+
+# ╔═╡ 53644676-1b3a-11eb-398e-0b7b56fc9fab
+md"It seems that β is related to that when the outbreak occurs, and γ is related to the scale of the infected."
 
 # ╔═╡ 82539bbe-106e-11eb-0e9e-170dfa6a7dad
 md"""
@@ -396,8 +416,9 @@ You should use **anonymous functions** for this. These have the form `x -> x^2`,
 
 # ╔═╡ bd8522c6-12e8-11eb-306c-c764f78486ef
 function ∂x(f::Function, a, b)
-	
-	return missing
+	h = 10e-3
+	g = x -> f(x, b)
+	return (g(a+h) - g(a)) / h
 end
 
 # ╔═╡ 321964ac-126d-11eb-0a04-0d3e3fb9b17c
@@ -408,8 +429,9 @@ end
 
 # ╔═╡ b7d3aa8c-12e8-11eb-3430-ff5d7df6a122
 function ∂y(f::Function, a, b)
-	
-	return missing
+	g = x -> f(a, x)
+	h = 10e-3
+	return (g(b+h) - g(b)) / h
 end
 
 # ╔═╡ a15509ee-126c-11eb-1fa3-cdda55a47fcb
@@ -426,8 +448,7 @@ md"""
 
 # ╔═╡ adbf65fe-12e8-11eb-04e9-3d763ba91a63
 function gradient(f::Function, a, b)
-	
-	return missing
+	return [∂x(f, a, b), ∂y(f, a, b)]
 end
 
 # ╔═╡ 66b8e15e-126c-11eb-095e-39c2f6abc81d
@@ -454,8 +475,7 @@ We want to minimize a 1D function, i.e. a function $f: \mathbb{R} \to \mathbb{R}
 
 # ╔═╡ a7f1829c-12e8-11eb-15a1-5de40ed92587
 function gradient_descent_1d_step(f, x0; η=0.01)
-	
-	return missing
+	return x0 - η*finite_difference_slope(f, x0, 10e-3)
 end
 
 # ╔═╡ d33271a2-12df-11eb-172a-bd5600265f49
@@ -479,8 +499,12 @@ md"""
 
 # ╔═╡ 9489009a-12e8-11eb-2fb7-97ba0bdf339c
 function gradient_descent_1d(f, x0; η=0.01, N_steps=1000)
+	x = x0
+	for i in 1:N_steps
+		x = gradient_descent_1d_step(f, x; η)
+	end
 	
-	return missing
+	return x
 end
 
 # ╔═╡ 34dc4b02-1248-11eb-26b2-5d2610cfeb41
@@ -497,7 +521,7 @@ Right now we take a fixed number of steps, even if the minimum is found quickly.
 
 # ╔═╡ ebca11d8-12c9-11eb-3dde-c546eccf40fc
 better_stopping_idea = md"""
-blabla
+When difference of the last value and its previous value is lower than preset threshold, it is time to end the funtion.
 """
 
 # ╔═╡ 9fd2956a-1248-11eb-266d-f558cda55702
@@ -510,14 +534,21 @@ Multivariable calculus tells us that the gradient $\nabla f(a, b)$ at a point $(
 
 # ╔═╡ 852be3c4-12e8-11eb-1bbb-5fbc0da74567
 function gradient_descent_2d_step(f, x0, y0; η=0.01)
-	
-	return missing
+	return [x0, y0] - η.* gradient(f, x0, y0)
 end
 
 # ╔═╡ 8a114ca8-12e8-11eb-2de6-9149d1d3bc3d
 function gradient_descent_2d(f, x0, y0; η=0.01)
+	x = x0; y = y0
 	
-	return missing
+	xy = sqrt(x^2 + y^2)
+	x, y = gradient_descent_2d_step(f, x, y; η)
+	while abs(sqrt(x^2 + y^2) -xy) > 10e-4
+		xy = sqrt(x^2 + y^2)
+		x, y = gradient_descent_2d_step(f, x, y; η)
+	end
+	
+	return [x, y]
 end
 
 # ╔═╡ 4454c2b2-12e3-11eb-012c-c362c4676bf6
@@ -549,7 +580,7 @@ md"""
 """
 
 # ╔═╡ 6d1ee93e-1103-11eb-140f-63fca63f8b06
-
+[gradient_descent_2d.(himmelbau, grid...) for grid in [[4,4], [4,-4], [-4,4], [-4,-4]]] 
 
 # ╔═╡ 8261eb92-106e-11eb-2ccc-1348f232f5c3
 md"""
@@ -624,8 +655,7 @@ $$\mathcal{L}(\mu, \sigma) := \sum_i [f_{\mu, \sigma}(x_i) - y_i]^2$$
 
 # ╔═╡ 2fc55daa-124f-11eb-399e-659e59148ef5
 function loss_dice(μ, σ)
-	
-	return missing
+	return sum((gauss.(dice_x, μ, σ) .- dice_y) .^ 2)
 end
 
 # ╔═╡ 3a6ec2e4-124f-11eb-0f68-791475bab5cd
@@ -642,7 +672,7 @@ found_μ, found_σ = let
 	
 	# your code here
 	
-	missing, missing
+	gradient_descent_2d(loss_dice, 30, 1; η=4)
 end
 
 # ╔═╡ ac320522-124b-11eb-1552-51c2adaf2521
@@ -729,8 +759,7 @@ This time, instead of comparing two vectors of numbers, we need to compare two v
 
 # ╔═╡ 754b5368-12e8-11eb-0763-e3ec56562c5f
 function loss_sir(β, γ)
-	
-	return missing
+	return sum(sum(map((x, y) -> (x .- y) .^ 2, euler_SIR(β, γ, [0.99, 0.01, 0], 0:0.01:10-0.01), hw4_results)))
 end
 
 # ╔═╡ ee20199a-12d4-11eb-1c2c-3f571bbb232e
@@ -746,7 +775,7 @@ found_β, found_γ = let
 	
 	# your code here
 	
-	missing, missing
+	gradient_descent_2d(loss_sir, 0.02, 0.002; η=10e-7)
 end
 
 # ╔═╡ b94b7610-106d-11eb-2852-25337ce6ec3a
@@ -1298,6 +1327,9 @@ end
 # ╠═589b2b4c-1245-11eb-1ec7-693c6bda97c4
 # ╟─58b45a0e-1245-11eb-04d1-23a1f3a0f242
 # ╠═68274534-1103-11eb-0d62-f1acb57721bc
+# ╠═e8e24486-1b39-11eb-1cc8-7977cf58aa07
+# ╠═0bfad866-1b3a-11eb-25cf-cdfa0e72e702
+# ╠═53644676-1b3a-11eb-398e-0b7b56fc9fab
 # ╟─82539bbe-106e-11eb-0e9e-170dfa6a7dad
 # ╟─b394b44e-1245-11eb-2f86-8d10113e8cfc
 # ╠═bd8522c6-12e8-11eb-306c-c764f78486ef
