@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.12.9
+# v0.12.16
 
 using Markdown
 using InteractiveUtils
@@ -206,7 +206,7 @@ md"""
 
 # ╔═╡ a86f13de-259d-11eb-3f46-1f6fb40020ce
 observations_from_changing_B = md"""
-Hello world!
+The more negative value of B, the lower temperature change. Since climate responds by warming rapidly and the magnitude of the warming depends on $B$, we call $B$ the _climate feedback parameter_.
 """
 
 # ╔═╡ 3d66bd30-259d-11eb-2694-471fb3a4a7be
@@ -216,7 +216,7 @@ md"""
 
 # ╔═╡ 5f82dec8-259e-11eb-2f4f-4d661f44ef41
 observations_from_nonnegative_B = md"""
-Hello world!
+If $B$ is greater than zero, the temperature goes down. IF $B$ is equal to zero, that means the system is unstable.
 """
 
 # ╔═╡ 56b68356-2601-11eb-39a9-5f4b8e580b87
@@ -234,9 +234,6 @@ md"""
 👉 Create a graph to visualize ECS as a function of B. 
 """
 
-# ╔═╡ b9f882d8-266b-11eb-2998-75d6539088c7
-
-
 # ╔═╡ 269200ec-259f-11eb-353b-0b73523ef71a
 md"""
 #### Exercise 1.2 - _Doubling CO₂_
@@ -252,13 +249,6 @@ The CO₂ concentrations in the _future_ depend on human action. There are sever
 md"""
 👉 In what year are we expected to have doubled the CO₂ concentration, under policy scenario RCP8.5?
 """
-
-# ╔═╡ 50ea30ba-25a1-11eb-05d8-b3d579f85652
-expected_double_CO2_year = let
-	
-	
-	missing
-end
 
 # ╔═╡ bade1372-25a1-11eb-35f4-4b43d4e8d156
 md"""
@@ -305,6 +295,9 @@ let
 		label="ΔT(t) = T(t) - T₀")
 end |> as_svg
 
+# ╔═╡ b9f882d8-266b-11eb-2998-75d6539088c7
+plot(B->ECS(B=B), xlim=(-2,2), ylim=(-20,20))
+
 # ╔═╡ 736ed1b6-1fc2-11eb-359e-a1be0a188670
 B_samples = let
 	B_distribution = Normal(B̅, σ)
@@ -324,13 +317,13 @@ md"""
 """
 
 # ╔═╡ 3d72ab3a-2689-11eb-360d-9b3d829b78a9
-ECS_samples = missing
+ECS_samples = ECS.(B=B_samples)
 
 # ╔═╡ b6d7a362-1fc8-11eb-03bc-89464b55c6fc
 md"**Answer:**"
 
 # ╔═╡ 1f148d9a-1fc8-11eb-158e-9d784e390b24
-
+histogram(ECS_samples, size=(600,250), label=nothing)
 
 # ╔═╡ cf8dca6c-1fc8-11eb-1f89-099e6ba53c22
 md"It looks like the ECS distribution is **not normally distributed**, even though $B$ is. 
@@ -339,14 +332,17 @@ md"It looks like the ECS distribution is **not normally distributed**, even thou
 "
 
 # ╔═╡ 02173c7a-2695-11eb-251c-65efb5b4a45f
+(mean(ECS_samples), ECS(B=mean(B_samples)))
 
+# ╔═╡ 4e1d62ba-3c4c-11eb-062f-8b3a073d8b77
+length(filter(x -> x > ECS(B=mean(B_samples)), ECS_samples)) / length(ECS_samples)
 
 # ╔═╡ 440271b6-25e8-11eb-26ce-1b80aa176aca
 md"👉 Does accounting for uncertainty in feedbacks make our expectation of global warming better (less implied warming) or worse (more implied warming)?"
 
 # ╔═╡ cf276892-25e7-11eb-38f0-03f75c90dd9e
 observations_from_the_order_of_averaging = md"""
-Hello world!
+Worse, because the mean of ECS is 0.4 more than ECS with B̄.
 """
 
 # ╔═╡ 5b5f25f0-266c-11eb-25d4-17e411c850c9
@@ -434,12 +430,13 @@ In this simulation, we used `T0 = 14` and `CO2 = t -> 280`, which is why `T` is 
 
 # ╔═╡ 9596c2dc-2671-11eb-36b9-c1af7e5f1089
 simulated_rcp85_model = let
-	
-	missing
+	ebm = Model.EBM(14.0, 1850, 1, t -> Model.CO2_RCP85(t))
+	Model.run!(ebm, 2100)
+	ebm
 end
 
 # ╔═╡ f94a1d56-2671-11eb-2cdc-810a9c7a8a5f
-
+plot(simulated_rcp85_model.t, simulated_rcp85_model.T)
 
 # ╔═╡ 4b091fac-2672-11eb-0db8-75457788d85e
 md"""
@@ -458,8 +455,9 @@ md"""
 
 # ╔═╡ f688f9f2-2671-11eb-1d71-a57c9817433f
 function temperature_response(CO2::Function, B::Float64=-1.3)
-	
-	return missing
+	ebm = Model.EBM(14.0, 1850, 1, CO2; B=B)
+	Model.run!(ebm, 2100)
+	return ebm
 end
 
 # ╔═╡ 049a866e-2672-11eb-29f7-bfea7ad8f572
@@ -484,6 +482,11 @@ t = 1850:2100
 plot(t, Model.CO2_RCP85.(t), 
 	ylim=(0,1200), ylabel="CO2 concentration [ppm]")
 
+# ╔═╡ 50ea30ba-25a1-11eb-05d8-b3d579f85652
+expected_double_CO2_year = let
+	findfirst(x -> x >=560, Model.CO2_RCP85.(t)) + 1849
+end
+
 # ╔═╡ 40f1e7d8-252d-11eb-0549-49ca4e806e16
 @bind t_scenario_test Slider(t; show_value=true, default=1850)
 
@@ -499,7 +502,15 @@ We are interested in how the **uncertainty in our input** $B$ (the climate feedb
 """
 
 # ╔═╡ f2e55166-25ff-11eb-0297-796e97c62b07
-
+begin
+	temp26 = [temperature_response(Model.CO2_RCP26, B).T[end] for B in B_samples]
+	temp85 = [temperature_response(Model.CO2_RCP85, B).T[end] for B in B_samples]
+	
+	P26 = length(filter(x -> x - 14.0 > 2, temp26)) / length(temp26)
+	P85 = length(filter(x -> x - 14.0 > 2, temp85)) / length(temp85)
+	
+	P26, P85
+end
 
 # ╔═╡ 1ea81214-1fca-11eb-2442-7b0b448b49d6
 md"""
@@ -582,9 +593,6 @@ md"""
 👉 Create a slider for `CO2` between `CO2min` and `CO2max`. Just like the horizontal axis of our plot, we want the slider to be _logarithmic_. 
 """
 
-# ╔═╡ 1d388372-2695-11eb-3068-7b28a2ccb9ac
-
-
 # ╔═╡ 4c9173ac-2685-11eb-2129-99071821ebeb
 md"""
 👉 Write a function `step_model!` that takes an existing `ebm` and `new_CO2`, which performs a step of our interactive process:
@@ -592,14 +600,6 @@ md"""
 - Assign a new function to `ebm.CO2`. _What function?_
 - Run the model.
 """
-
-# ╔═╡ 736515ba-2685-11eb-38cb-65bfcf8d1b8d
-function step_model!(ebm::Model.EBM, CO2::Real)
-	
-	# your code here
-	
-	return ebm
-end
 
 # ╔═╡ 8b06b944-268c-11eb-0bfc-8d4dd21e1f02
 md"""
@@ -617,11 +617,26 @@ CO2min = 10
 # ╔═╡ 2bbf5a70-2676-11eb-1085-7130d4a30443
 CO2max = 1_000_000
 
+# ╔═╡ 1d388372-2695-11eb-3068-7b28a2ccb9ac
+@bind log_CO2 Slider(log(10, CO2min):log(10, CO2max+1), show_value=true)
+
+# ╔═╡ 8b52216a-41ae-11eb-0e02-e112fe9c2427
+CO2 = 10^log_CO2
+
 # ╔═╡ de95efae-2675-11eb-0909-73afcd68fd42
 Tneo = -48
 
 # ╔═╡ 06d28052-2531-11eb-39e2-e9613ab0401c
 ebm = Model.EBM(Tneo, 0., 5., Model.CO2_const)
+
+# ╔═╡ 736515ba-2685-11eb-38cb-65bfcf8d1b8d
+function step_model!(ebm::Model.EBM, CO2::Real)
+	ebm.t = [0.0]
+	ebm.T = [Tneo]
+	ebm.CO2 = x -> CO2
+	Model.run!(ebm)
+	return ebm
+end
 
 # ╔═╡ 378aed18-252b-11eb-0b37-a3b511af2cb5
 let
@@ -637,7 +652,7 @@ let
 	add_cold_hot_areas!(p)
 	add_reference_points!(p)
 	
-	# your code here 
+	step_model!(ebm, CO2)
 	
 	plot!(p, 
 		[ebm.CO2(ebm.t[end])], [ebm.T[end]],
@@ -645,7 +660,6 @@ let
 		color=:black,
 		shape=:circle,
 	)
-	
 end |> as_svg
 
 # ╔═╡ c78e02b4-268a-11eb-0af7-f7c7620fcc34
@@ -683,10 +697,17 @@ md"""
 👉 Find the **lowest CO₂ concentration** necessary to melt the Snowball, programatically.
 """
 
+# ╔═╡ 71e9271c-41ba-11eb-3b5d-1f81b295be1f
+function equilibrium_temperature(CO2::Real)
+	ebm = Model.EBM(Tneo, 0., 5., x -> CO2)
+	Model.run!(ebm)
+	return ebm.T[end]
+end
+
 # ╔═╡ 9eb07a6e-2687-11eb-0de3-7bc6aa0eefb0
 co2_to_melt_snowball = let
-	
-	missing
+	Δt = 10.
+	min(filter(CO2 -> Δt ≤ equilibrium_temperature(CO2), 10^5:10:10^6)...)
 end
 
 # ╔═╡ 3a35598a-2527-11eb-37e5-3b3e4c63c4f7
@@ -772,7 +793,7 @@ TODO = html"<span style='display: inline; font-size: 2em; color: purple; font-we
 # ╠═1e06178a-1fbf-11eb-32b3-61769a79b7c0
 # ╟─87e68a4a-2433-11eb-3e9d-21675850ed71
 # ╟─fe3304f8-2668-11eb-066d-fdacadce5a19
-# ╟─930d7154-1fbf-11eb-1c3a-b1970d291811
+# ╠═930d7154-1fbf-11eb-1c3a-b1970d291811
 # ╟─1312525c-1fc0-11eb-2756-5bc3101d2260
 # ╠═c4398f9c-1fc4-11eb-0bbb-37f066c6027d
 # ╟─7f961bc0-1fc5-11eb-1f18-612aeff0d8df
@@ -794,7 +815,7 @@ TODO = html"<span style='display: inline; font-size: 2em; color: purple; font-we
 # ╟─51e2e742-25a1-11eb-2511-ab3434eacc3e
 # ╟─bade1372-25a1-11eb-35f4-4b43d4e8d156
 # ╠═02232964-2603-11eb-2c4c-c7b7e5fed7d1
-# ╟─736ed1b6-1fc2-11eb-359e-a1be0a188670
+# ╠═736ed1b6-1fc2-11eb-359e-a1be0a188670
 # ╠═49cb5174-1fc3-11eb-3670-c3868c9b0255
 # ╟─f3abc83c-1fc7-11eb-1aa8-01ce67c8bdde
 # ╠═3d72ab3a-2689-11eb-360d-9b3d829b78a9
@@ -802,6 +823,7 @@ TODO = html"<span style='display: inline; font-size: 2em; color: purple; font-we
 # ╠═1f148d9a-1fc8-11eb-158e-9d784e390b24
 # ╟─cf8dca6c-1fc8-11eb-1f89-099e6ba53c22
 # ╠═02173c7a-2695-11eb-251c-65efb5b4a45f
+# ╠═4e1d62ba-3c4c-11eb-062f-8b3a073d8b77
 # ╟─440271b6-25e8-11eb-26ce-1b80aa176aca
 # ╠═cf276892-25e7-11eb-38f0-03f75c90dd9e
 # ╟─5b5f25f0-266c-11eb-25d4-17e411c850c9
@@ -835,6 +857,7 @@ TODO = html"<span style='display: inline; font-size: 2em; color: purple; font-we
 # ╟─0e19f82e-2685-11eb-2e99-0d094c1aa520
 # ╟─1eabe908-268b-11eb-329b-b35160ec951e
 # ╠═1d388372-2695-11eb-3068-7b28a2ccb9ac
+# ╠═8b52216a-41ae-11eb-0e02-e112fe9c2427
 # ╟─53c2eaf6-268b-11eb-0899-b91c03713da4
 # ╠═06d28052-2531-11eb-39e2-e9613ab0401c
 # ╟─4c9173ac-2685-11eb-2129-99071821ebeb
@@ -850,6 +873,7 @@ TODO = html"<span style='display: inline; font-size: 2em; color: purple; font-we
 # ╟─9c1f73e0-268a-11eb-2bf1-216a5d869568
 # ╟─11096250-2544-11eb-057b-d7112f20b05c
 # ╠═9eb07a6e-2687-11eb-0de3-7bc6aa0eefb0
+# ╠═71e9271c-41ba-11eb-3b5d-1f81b295be1f
 # ╟─cb15cd88-25ed-11eb-2be4-f31500a726c8
 # ╟─232b9bec-2544-11eb-0401-97a60bb172fc
 # ╟─3a35598a-2527-11eb-37e5-3b3e4c63c4f7
